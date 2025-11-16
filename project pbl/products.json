@@ -1,0 +1,9 @@
+[
+{"id":1000,"name":"Mechanical Keyboard","category":"Electronics","price":99.99},
+{"id":1001,"name":"Wireless Mouse","category":"Electronics","price":45.50},
+{"id":1002,"name":"The Silent Patient Book","category":"Books","price":12.00},
+{"id":1003,"name":"Blue Hoodie","category":"Apparel","price":65.00},
+{"id":1004,"name":"fidget spinner","category":"toys","price":67.00},
+{"id":1005,"name":"remote control car","category":"toys","price":54.00},
+{"id":1006,"name":"The Book Of Love","category":"Books","price":765.00}
+]

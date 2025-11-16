@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Recommendation Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for aesthetics */
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+        body::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 4px;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Main Application Container -->
+    <div id="app" class="min-h-screen flex flex-col lg:flex-row">
+
+        <!-- Sidebar Navigation (Hidden on mobile by default) -->
+        <div id="sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition duration-200 ease-in-out bg-indigo-800 text-white w-64 p-6 z-30 shadow-2xl lg:shadow-none">
+            
+            <h1 class="text-3xl font-extrabold mb-8 flex items-center">
+                <span class="mr-2 text-yellow-400">🛍️</span> Recom System
+            </h1>
+
+            <nav class="space-y-3">
+                <button onclick="renderContent('products')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 bg-indigo-700 font-semibold" data-target="products">
+                    <span class="text-xl mr-3">📦</span> Show All Products
+                </button>
+                <button onclick="renderContent('users')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="users">
+                    <span class="text-xl mr-3">👥</span> Show All Users
+                </button>
+                
+                <div class="h-4"></div> <!-- Spacer -->
+
+                <button onclick="renderContent('addProduct')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="addProduct">
+                    <span class="text-xl mr-3 text-green-400">➕</span> Add Product
+                </button>
+                <button onclick="renderContent('addUser')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="addUser">
+                    <span class="text-xl mr-3 text-green-400">👤</span> Add User
+                </button>
+
+                <div class="h-4"></div> <!-- Spacer -->
+
+                <button onclick="renderContent('purchase')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="purchase">
+                    <span class="text-xl mr-3 text-yellow-400">🛒</span> Purchase Product
+                </button>
+                <button onclick="renderContent('rate')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="rate">
+                    <span class="text-xl mr-3 text-pink-400">⭐</span> Rate Product
+                </button>
+                <button onclick="renderContent('recommend')" class="nav-button w-full flex items-center p-3 rounded-xl transition duration-150 ease-in-out hover:bg-indigo-700 font-medium" data-target="recommend">
+                    <span class="text-xl mr-3 text-cyan-300">💡</span> Get Recommendations
+                </button>
+            </nav>
+        </div>
+
+        <!-- Backdrop for mobile menu -->
+        <div id="backdrop" class="fixed inset-0 bg-black opacity-0 transition duration-200 ease-in-out z-20 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 lg:ml-64 p-4 sm:p-8">
+            <!-- Mobile Menu Button -->
+            <button id="menu-button" class="lg:hidden fixed top-4 left-4 p-2 bg-indigo-600 text-white rounded-full z-40 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+
+            <!-- Title and Content Area -->
+            <div class="mt-16 lg:mt-0">
+                <h2 id="main-title" class="text-4xl font-bold mb-4 text-indigo-800">Show All Products</h2>
+                <p id="main-description" class="text-gray-500 mb-8">View the complete catalog of items available in the system.</p>
+                <div id="content-area" class="bg-white p-6 sm:p-10 rounded-3xl shadow-xl min-h-[60vh] border border-gray-100">
+                    <!-- Initial Content (Products List Mockup) -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+// API Base URL
+const API_BASE = 'http://127.0.0.1:5000';
+
+const contentArea = document.getElementById('content-area');
+const mainTitle = document.getElementById('main-title');
+const mainDescription = document.getElementById('main-description');
+const navButtons = document.querySelectorAll('.nav-button');
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('backdrop');
+const menuButton = document.getElementById('menu-button');
+
+// --- Core Action Logic ---
+
+// Fetch and render products
+async function renderProducts() {
+    mainTitle.textContent = "Show All Products";
+    mainDescription.textContent = "Loading products from system...";
+
+    try {
+        const res = await fetch(`${API_BASE}/getProducts`);
+        const data = await res.json();
+
+        if (!data.products) throw new Error("Invalid response");
+
+        mainDescription.textContent = `Current Inventory: ${data.products.length} Items.`;
+
+        let html = '<div class="space-y-6">';
+        data.products.forEach(p => {
+            const ratingColor = p.avg_rating >= 4.0
+                ? 'text-green-600'
+                : p.avg_rating >= 2.5
+                ? 'text-yellow-600'
+                : 'text-red-600';
+
+            html += `
+                <div class="p-4 border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition duration-150 bg-gray-50">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-lg font-semibold text-indigo-600">${p.name}</span>
+                                <span class="text-sm font-bold text-gray-700">#${p.id}</span>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                Category: <span class="font-medium text-gray-600">${p.category}</span> |
+                                Price: <span class="font-medium text-gray-600">${p.price.toFixed(2)}</span>
+                            </div>
+                            <div class="text-sm">
+                                Rating: <span class="font-bold ${ratingColor}">${p.avg_rating.toFixed(2)}</span>
+                                (${p.reviews_count} reviews)
+                            </div>
+                        </div>
+                        <button onclick="deleteProduct(${p.id})" class="ml-4 px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition duration-150">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        contentArea.innerHTML = html;
+    } catch (err) {
+        contentArea.innerHTML = `<p class="text-red-600">Failed to load products: ${err.message}</p>`;
+    }
+}
+
+// Fetch and render users
+async function renderUsers() {
+    mainTitle.textContent = "Show All Users";
+    mainDescription.textContent = "Loading users from system...";
+
+    try {
+        const res = await fetch(`${API_BASE}/getUsers`);
+        const data = await res.json();
+
+        if (!data.users) throw new Error("Invalid response");
+
+        mainDescription.textContent = `Registered Users: ${data.users.length} accounts.`;
+
+        let html = '<div class="space-y-6">';
+        data.users.forEach(u => {
+            html += `
+                <div class="p-4 border border-gray-100 rounded-xl shadow-sm bg-gray-50">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xl font-bold text-gray-800">${u.name}</span>
+                                <span class="text-sm font-bold text-indigo-600">User ID: ${u.id}</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteUser(${u.id})" class="ml-4 px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition duration-150">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        contentArea.innerHTML = html;
+    } catch (err) {
+        contentArea.innerHTML = `<p class="text-red-600">Failed to load users: ${err.message}</p>`;
+    }
+}
+
+// Render Add Product Form
+function renderAddProduct() {
+    mainTitle.textContent = "Add New Product";
+    mainDescription.textContent = "Input details for a new item to be added to the inventory.";
+    contentArea.innerHTML = `
+        <form onsubmit="handleAddProduct(event)" class="max-w-md space-y-6">
+            <div>
+                <label for="pName" class="block text-sm font-medium text-gray-700">Product Name</label>
+                <input type="text" id="pName" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="pCategory" class="block text-sm font-medium text-gray-700">Category</label>
+                <input type="text" id="pCategory" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Electronics, Books, Apparel">
+            </div>
+            <div>
+                <label for="pPrice" class="block text-sm font-medium text-gray-700">Price ($)</label>
+                <input type="number" step="0.01" id="pPrice" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" min="0.01">
+            </div>
+            <button type="submit" class="w-full py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                ➕ Add Product to System
+            </button>
+        </form>
+    `;
+}
+
+// Handle Add Product submission
+async function handleAddProduct(event) {
+    event.preventDefault();
+    const name = document.getElementById('pName').value;
+    const category = document.getElementById('pCategory').value;
+    const price = parseFloat(document.getElementById('pPrice').value);
+
+    try {
+        const res = await fetch(`${API_BASE}/addProduct`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, category, price })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `Product "${name}" added successfully! ID: ${data.id}`);
+            // Refresh the products list after adding
+            renderProducts();
+        } else {
+            alertUser('error', data.message || 'Failed to add product');
+        }
+    } catch (err) {
+        alertUser('error', `Error adding product: ${err.message}`);
+    }
+}
+
+// Render Add User Form
+function renderAddUser() {
+    mainTitle.textContent = "Add New User";
+    mainDescription.textContent = "Register a new customer account in the system.";
+    contentArea.innerHTML = `
+        <form onsubmit="handleAddUser(event)" class="max-w-md space-y-6">
+            <div>
+                <label for="uName" class="block text-sm font-medium text-gray-700">User Full Name</label>
+                <input type="text" id="uName" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="submit" class="w-full py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                ➕ Register New User
+            </button>
+        </form>
+    `;
+}
+
+// Handle Add User submission
+async function handleAddUser(event) {
+    event.preventDefault();
+    const name = document.getElementById('uName').value;
+
+    try {
+        const res = await fetch(`${API_BASE}/addUser`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `User "${name}" registered successfully! ID: ${data.id}`);
+            // Refresh the users list after adding
+            renderUsers();
+        } else {
+            alertUser('error', data.message || 'Failed to add user');
+        }
+    } catch (err) {
+        alertUser('error', `Error adding user: ${err.message}`);
+    }
+}
+
+// Render Purchase Form
+function renderPurchase() {
+    mainTitle.textContent = "Purchase Product";
+    mainDescription.textContent = "Record a product purchase for a specific user.";
+    contentArea.innerHTML = `
+        <form onsubmit="handlePurchase(event)" class="max-w-md space-y-6">
+            <div>
+                <label for="buyUserId" class="block text-sm font-medium text-gray-700">User ID</label>
+                <input type="number" id="buyUserId" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="buyProductId" class="block text-sm font-medium text-gray-700">Product ID to Purchase</label>
+                <input type="number" id="buyProductId" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="submit" class="w-full py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                🛒 Confirm Purchase
+            </button>
+        </form>
+    `;
+}
+
+// Handle Purchase submission
+async function handlePurchase(event) {
+    event.preventDefault();
+    const userId = parseInt(document.getElementById('buyUserId').value);
+    const productId = parseInt(document.getElementById('buyProductId').value);
+
+    try {
+        const res = await fetch(`${API_BASE}/purchase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, productId })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `Purchase confirmed: User ${userId} bought Product ${productId}!`);
+        } else {
+            alertUser('error', data.message || 'Failed to record purchase');
+        }
+    } catch (err) {
+        alertUser('error', `Error processing purchase: ${err.message}`);
+    }
+}
+
+// Render Rate Product Form
+function renderRate() {
+    mainTitle.textContent = "Rate Product";
+    mainDescription.textContent = "Submit a rating (1-5) for a purchased product.";
+    contentArea.innerHTML = `
+        <form onsubmit="handleRateProduct(event)" class="max-w-md space-y-6">
+            <div>
+                <label for="rateUserId" class="block text-sm font-medium text-gray-700">User ID</label>
+                <input type="number" id="rateUserId" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="rateProductId" class="block text-sm font-medium text-gray-700">Product ID to Rate</label>
+                <input type="number" id="rateProductId" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="rating" class="block text-sm font-medium text-gray-700">Rating (1-5)</label>
+                <input type="number" id="rating" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" min="1" max="5">
+            </div>
+            <button type="submit" class="w-full py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition duration-150">
+                ⭐ Submit Rating
+            </button>
+        </form>
+    `;
+}
+
+// Handle Rate Product submission
+async function handleRateProduct(event) {
+    event.preventDefault();
+    const userId = parseInt(document.getElementById('rateUserId').value);
+    const productId = parseInt(document.getElementById('rateProductId').value);
+    const rating = parseInt(document.getElementById('rating').value);
+
+    try {
+        const res = await fetch(`${API_BASE}/rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, productId, rating })
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `Rating ${rating}/5 submitted successfully!`);
+            // Refresh products to show updated rating
+            renderProducts();
+        } else {
+            alertUser('error', data.message || 'Failed to submit rating');
+        }
+    } catch (err) {
+        alertUser('error', `Error submitting rating: ${err.message}`);
+    }
+}
+
+// Render Recommendation Form
+function renderRecommend() {
+    mainTitle.textContent = "Get Smart Recommendations";
+    mainDescription.textContent = "Generate top 3 category recommendations based on a user's purchase history.";
+    contentArea.innerHTML = `
+        <form onsubmit="handleRecommend(event)" class="max-w-md space-y-6">
+            <div>
+                <label for="recUserId" class="block text-sm font-medium text-gray-700">User ID</label>
+                <input type="number" id="recUserId" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="submit" class="w-full py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-medium text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition duration-150">
+                💡 Generate Recommendations
+            </button>
+        </form>
+        <div id="recommendation-results" class="mt-8 p-6 bg-gray-100 rounded-xl hidden">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Recommendations for User <span id="rec-user-id"></span>:</h3>
+            <div id="rec-list"></div>
+        </div>
+    `;
+}
+
+// Handle Recommendation request
+async function handleRecommend(event) {
+    event.preventDefault();
+    const userId = parseInt(document.getElementById('recUserId').value);
+
+    try {
+        const res = await fetch(`${API_BASE}/recommend?userId=${userId}`);
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            document.getElementById('rec-user-id').textContent = userId;
+            
+            let html = '<ul class="list-disc list-inside space-y-2">';
+            if (data.recommendations && data.recommendations.length > 0) {
+                data.recommendations.forEach((rec, idx) => {
+                    html += `<li><strong>${rec.name}</strong> (${rec.category}, Price: $${rec.price.toFixed(2)}, Rating: ${rec.avg_rating.toFixed(2)})</li>`;
+                });
+            } else {
+                html += '<li class="text-gray-500">No recommendations available for this user.</li>';
+            }
+            html += '</ul>';
+            
+            document.getElementById('rec-list').innerHTML = html;
+            document.getElementById('recommendation-results').classList.remove('hidden');
+            alertUser('success', `Recommendations generated for User ${userId}!`);
+        } else {
+            alertUser('error', data.message || 'Failed to generate recommendations');
+        }
+    } catch (err) {
+        alertUser('error', `Error generating recommendations: ${err.message}`);
+    }
+}
+
+// --- UI Logic and Routing ---
+
+// Simple alert banner function
+function alertUser(type, message) {
+    const colors = {
+        success: 'bg-green-100 border-green-400 text-green-700',
+        info: 'bg-blue-100 border-blue-400 text-blue-700',
+        error: 'bg-red-100 border-red-400 text-red-700'
+    };
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `fixed top-5 right-5 p-4 rounded-xl shadow-lg border-l-4 ${colors[type]} z-50 transition duration-300 ease-in-out transform translate-x-full`;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => {
+        alertDiv.style.transform = 'translateX(0)';
+    }, 50);
+
+    setTimeout(() => {
+        alertDiv.style.transform = 'translateX(120%)';
+        setTimeout(() => alertDiv.remove(), 300);
+    }, 5000);
+}
+
+// Function to handle content rendering based on the selected menu item
+function renderContent(target) {
+    navButtons.forEach(btn => {
+        btn.classList.remove('bg-indigo-700', 'font-semibold');
+        btn.classList.add('font-medium');
+        if (btn.getAttribute('data-target') === target) {
+            btn.classList.add('bg-indigo-700', 'font-semibold');
+            btn.classList.remove('font-medium');
+        }
+    });
+
+    switch (target) {
+        case 'products': renderProducts(); break;
+        case 'users': renderUsers(); break;
+        case 'addProduct': renderAddProduct(); break;
+        case 'addUser': renderAddUser(); break;
+        case 'purchase': renderPurchase(); break;
+        case 'rate': renderRate(); break;
+        case 'recommend': renderRecommend(); break;
+        default: renderProducts();
+    }
+
+    if (window.innerWidth < 1024) {
+        toggleSidebar();
+    }
+}
+
+// Mobile sidebar toggle
+function toggleSidebar() {
+    const isHidden = sidebar.classList.contains('-translate-x-full');
+    if (isHidden) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden', 'opacity-0');
+        backdrop.classList.add('opacity-50');
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.remove('opacity-50');
+        backdrop.classList.add('opacity-0');
+        setTimeout(() => backdrop.classList.add('hidden'), 200);
+    }
+}
+
+menuButton.addEventListener('click', toggleSidebar);
+
+// Initialize the view when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    renderContent('products');
+});
+
+// Delete Product Function
+async function deleteProduct(productId) {
+    if (!confirm(`Are you sure you want to delete product #${productId}? This will also remove all its reviews.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/deleteProduct/${productId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `Product #${productId} deleted successfully!`);
+            renderProducts(); // Refresh the list
+        } else {
+            alertUser('error', data.message || 'Failed to delete product');
+        }
+    } catch (err) {
+        alertUser('error', `Error deleting product: ${err.message}`);
+    }
+}
+
+// Delete User Function
+async function deleteUser(userId) {
+    if (!confirm(`Are you sure you want to delete user #${userId}? This will also remove all their reviews.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/deleteUser/${userId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            alertUser('success', `User #${userId} deleted successfully!`);
+            renderUsers(); // Refresh the list
+        } else {
+            alertUser('error', data.message || 'Failed to delete user');
+        }
+    } catch (err) {
+        alertUser('error', `Error deleting user: ${err.message}`);
+    }
+}
+    </script>
+</body>
+</html>

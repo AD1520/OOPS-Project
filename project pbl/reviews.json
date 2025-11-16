@@ -1,0 +1,7 @@
+[
+{"user_id":100,"product_id":1000,"rating":5,"comment":"Excellent keyboard for coding."},
+{"user_id":100,"product_id":1001,"rating":4,"comment":"Reliable mouse, good battery life."},
+{"user_id":101,"product_id":1002,"rating":3,"comment":"A decent thriller, a bit slow."},
+{"user_id":101,"product_id":1003,"rating":5,"comment":"Comfy and warm!"},
+{"user_id":103,"product_id":1006,"rating":4,"comment":"No comment provided."}
+]
